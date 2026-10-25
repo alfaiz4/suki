@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NeoGroup — Status Pesanan</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="dash.css">
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script></head>
+<body><header id="hdr"></header>
+<main id="app" hidden></main>
+<script src="shop.js"></script>
+<script>
+const {sb,q,rp,esc,badge,countdown,errMsg,toast,WA_NUMBER}=Shop;
+const id=new URLSearchParams(location.search).get('id');
+let order,key='',stops=[],poll;
+const fetchOrder=async()=>(await sb.from('orders').select('*').eq('id',id).maybeSingle()).data;
+(async()=>{
+  const ses=await Shop.requireSession();if(!ses)return;
+  Shop.header('riwayat.html','Riwayat');q('#app').hidden=false;
+  await sb.rpc('expire_orders');
+  order=await fetchOrder();
+  if(!order){q('#app').innerHTML='<p class="muted">Pesanan tidak ditemukan.</p>';return}
+  if(order.status==='pending'&&!order.pay_data){try{order=(await Shop.fn('create',{order_id:id})).order}catch(e){toast(e.message)}}
+  render();poll=setInterval(tick,5000);
+})();
+async function tick(){
+  try{order=order.status==='pending'?(await Shop.fn('status',{order_id:id})).order:await fetchOrder()}catch(e){}
+  if(order.status==='success'||order.status==='gagal')clearInterval(poll);
+  render();
+}
+function qrOf(d){
+  const img=d.qris_url||d.qr_url||d.qris_image||d.qr_image||d.image||d.qrcode||d.qr;
+  if(img)return{img:/^(https?:|data:)/.test(img)?img:'data:image/png;base64,'+img};
+  const s=d.qris||d.qr_string||d.qris_string||d.qr_content;return s?{str:s}:null;
+}
+function waLink(o){
+  const t=`Halo Admin, saya ingin menanyakan pesanan.\n\nInvoice ID: ${o.invoice_id}\nNama Barang: ${o.item_name}\nHarga: ${rp(o.total)}`;
+  return `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(t)}`;
+}
+function render(){
+  const o=order,k=o.status+(o.pay_data?1:0)+o.process_deadline;
+  if(k===key)return;key=k;stops.forEach(f=>f());stops=[];
+  const qr=o.status==='pending'&&o.pay_data?qrOf(o.pay_data):null;
+  q('#app').innerHTML=`
+  <h1>Status Pesanan</h1>
+  <div class="card">
+    <div class="row"><b>${esc(o.invoice_id)}</b>${badge(o.status)}</div>
+    <div>${esc(o.item_name)}</div><div class="mono"><b>${rp(o.total)}</b></div>
+  </div>
+  ${o.status==='pending'?`<div class="card">
+    <div class="muted">Selesaikan pembayaran QRIS dalam</div><div class="timer" id="pay-t"></div>
+    ${qr?`<div class="qr" id="qr">${qr.img?`<img src="${esc(qr.img)}" alt="QRIS">`:''}</div>`
+        :'<p class="muted">QRIS sedang dibuat… <button class="btn" id="retry">Muat ulang</button></p>'}
+    <p class="muted">Status akan terbarui otomatis setelah pembayaran diterima.</p>
+    <button class="btn dng" id="cancel">Batalkan Sekarang</button></div>`:''}
+  <div class="card">
+    <b>Status Pesanan</b>
+    <div class="steps">${['proses','success','pending','gagal'].map(s=>`<div class="step ${s}${o.status===s?' on':''}">${Shop.LABEL[s]}</div>`).join('')}</div>
+    ${o.status==='gagal'&&o.fail_reason?`<div class="muted">${esc(o.fail_reason)}</div>`:''}
+    ${o.status!=='gagal'?`<div class="muted">Estimasi proses pesanan</div><div class="timer" id="proc-t">30:00</div>
+      <div class="muted" id="proc-n">${o.status==='pending'?'Hitung mundur dimulai setelah pembayaran terkonfirmasi.':''}</div>`:''}
+    <p class="muted">Hubungi admin jika pesanan tidak diproses</p>
+    <a class="btn pri" href="${waLink(o)}" target="_blank" rel="noopener">Hubungi Admin (WhatsApp)</a>
+  </div>`;
+  if(o.status==='pending'){
+    stops.push(countdown(q('#pay-t'),new Date(o.pay_expires_at).getTime(),async()=>{await sb.rpc('expire_orders');tick()}));
+    if(qr&&qr.str)new QRCode(q('#qr'),{text:qr.str,width:216,height:216});
+    const r=q('#retry');if(r)r.onclick=async()=>{try{order=(await Shop.fn('create',{order_id:id})).order;key='';render()}catch(e){toast(e.message)}};
+    q('#cancel').onclick=async()=>{
+      if(!confirm('Batalkan pesanan ini?'))return;
+      const {error}=await sb.rpc('cancel_order',{p_id:id});
+      if(error){const m=errMsg(error);toast(m.startsWith('COOLDOWN')?'Cooldown, coba lagi dalam '+Shop.mmss(+m.split(':')[1]):m)}
+      else{order=await fetchOrder();key='';render()}
+    };
+  }else if(o.process_deadline&&o.status==='proses'){
+    stops.push(countdown(q('#proc-t'),new Date(o.process_deadline).getTime(),()=>{q('#proc-n').textContent='Estimasi waktu habis. Silakan hubungi admin.'}));
+  }else if(o.status==='success'){q('#proc-t').textContent='Selesai';q('#proc-n').textContent='Pesanan Anda sudah berhasil diproses.'}
+}
+</script></body></html>

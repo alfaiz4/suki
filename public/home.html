@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>NeoGroup — Beranda</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+:root{
+  --bg:#f5f6f7;--surface:#ffffff;--text:#14161a;--muted:#6b7078;--line:#e2e4e8;
+  --btn:#14161a;--btn-text:#f5f6f7;--tile:#eceef1;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1013;--surface:#16191d;--text:#eef0f3;--muted:#8b919a;--line:#262a30;
+    --btn:#eef0f3;--btn-text:#0e1013;--tile:#1c2026;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1013;--surface:#16191d;--text:#eef0f3;--muted:#8b919a;--line:#262a30;
+  --btn:#eef0f3;--btn-text:#0e1013;--tile:#1c2026;
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);color:var(--text);font-family:'Outfit',system-ui,-apple-system,'Segoe UI',sans-serif;line-height:1.5;transition:background .3s,color .3s}
+h1,p{margin:0}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--text);outline-offset:3px}
+.top{display:flex;align-items:center;gap:14px;padding:16px 20px;width:100%}
+.brand{font-weight:600;font-size:22px;letter-spacing:-.02em;margin-right:auto}
+.stage{flex:1;display:flex;justify-content:center;align-items:center;padding:32px 20px 48px}
+.col{width:100%;max-width:24rem}
+
+.switch{position:relative;width:62px;height:34px;border-radius:999px;border:1px solid var(--line);background:var(--tile);transition:background .3s,border-color .3s}
+.switch .knob{position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:var(--btn);color:var(--btn-text);display:grid;place-items:center;transition:transform .35s cubic-bezier(.5,1.4,.5,1)}
+.switch[aria-checked="true"] .knob{transform:translateX(28px)}
+.switch svg{width:15px;height:15px;grid-area:1/1;transition:opacity .2s,transform .35s}
+.switch .moon{opacity:0;transform:rotate(-60deg) scale(.6)}
+.switch[aria-checked="true"] .sun{opacity:0;transform:rotate(60deg) scale(.6)}
+.switch[aria-checked="true"] .moon{opacity:1;transform:none}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;transition:background .3s,border-color .3s}
+.avatar{width:56px;height:56px;border-radius:50%;background:var(--btn);color:var(--btn-text);display:grid;place-items:center;font-size:22px;font-weight:500;margin-bottom:4px}
+.title{font-size:34px;line-height:1.1;letter-spacing:-.03em;font-weight:500}
+.sub{color:var(--muted);font-weight:300;overflow-wrap:anywhere;margin-bottom:16px}
+.btn{width:100%;border:1px solid var(--line);border-radius:999px;padding:13px;font-weight:500;transition:border-color .2s}
+.btn:hover{border-color:var(--text)}
+.col{display:flex;flex-direction:column;gap:16px}
+.link{flex-direction:row;align-items:center;justify-content:space-between;gap:16px;color:inherit;text-decoration:none;transition:border-color .2s,background .3s}
+.link:hover{border-color:var(--text)}
+.link-title{margin:0;font-size:20px;font-weight:500;letter-spacing:-.01em}
+.link-desc{color:var(--muted);font-size:15px;font-weight:300}
+.arrow{font-size:22px;transition:transform .25s}
+.link:hover .arrow{transform:translateX(4px)}
+.notice{width:calc(100% - 40px);max-width:24rem;margin:32px auto;padding:12px 14px;border:1px solid var(--line);border-radius:12px;font-size:14px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <span class="brand">NeoGroup</span>
+    <button class="switch" id="theme" role="switch" aria-checked="false" aria-label="Mode gelap">
+      <span class="knob">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </span>
+    </button>
+  </header>
+
+  <p class="notice" id="notice" hidden></p>
+
+  <!-- Konten tersembunyi sampai sesi login terverifikasi -->
+  <main class="stage" id="app" hidden>
+    <div class="col">
+      <div class="card">
+        <div class="avatar" id="avatar">N</div>
+        <h1 class="title">Halo, <span id="name"></span></h1>
+        <p class="sub" id="contact"></p>
+        <button class="btn" id="btn-logout" type="button">Keluar</button>
+      </div>
+      <a class="card link" href="toko-polos.html">
+        <div><h2 class="link-title">Shop</h2><p class="link-desc">Lihat produk dan pesan.</p></div>
+        <span class="arrow" aria-hidden="true">→</span>
+      </a>
+      <a class="card link" href="riwayat.html">
+        <div><h2 class="link-title">Riwayat Transaksi</h2><p class="link-desc">Status, bayar, dan batalkan pesanan.</p></div>
+        <span class="arrow" aria-hidden="true">→</span>
+      </a>
+      <a class="card link" id="admin-link" href="admin.html" hidden>
+        <div><h2 class="link-title">Dashboard Admin</h2><p class="link-desc">Kelola pesanan dan barang.</p></div>
+        <span class="arrow" aria-hidden="true">→</span>
+      </a>
+      <a class="card link" href="developer.html">
+        <div><h2 class="link-title">Contact Support</h2><p class="link-desc">Cust service & Devloper.</p></div>
+        <span class="arrow" aria-hidden="true">→</span>
+      </a>
+    </div>
+  </main>
+
+  <script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // CONFIGURATION - SAMAKAN DENGAN app.js
+    const SUPABASE_URL = window.__CFG.SUPABASE_URL;
+    const SUPABASE_ANON_KEY = window.__CFG.SUPABASE_ANON_KEY;
+    const LOGIN_URL = "index.html";
+
+    const $ = (s) => document.querySelector(s);
+    const showNotice = (msg) => { const n = $("#notice"); n.textContent = msg; n.hidden = false; };
+    // Penanda agar index.html tidak langsung melempar balik ke sini (mencegah loop pengalihan)
+    const toLogin = () => {
+      try { sessionStorage.setItem("polos-noauto", "1"); } catch (e) {}
+      location.replace(LOGIN_URL);
+    };
+
+    /* ---------- Tema gelap / terang ---------- */
+    const root = document.documentElement;
+    const sw = $("#theme");
+    const isDark = () => root.dataset.theme
+      ? root.dataset.theme === "dark"
+      : matchMedia("(prefers-color-scheme: dark)").matches;
+    const syncSwitch = () => sw.setAttribute("aria-checked", isDark());
+    try {
+      const t = localStorage.getItem("polos-tema");
+      if (t === "dark" || t === "light") root.dataset.theme = t;
+    } catch (e) {}
+    syncSwitch();
+    sw.addEventListener("click", () => {
+      const next = isDark() ? "light" : "dark";
+      root.dataset.theme = next;
+      syncSwitch();
+      try { localStorage.setItem("polos-tema", next); } catch (e) {}
+    });
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncSwitch);
+
+    /* ---------- Penjaga halaman (protected route) ---------- */
+    const REMEMBER_KEY = "polos-remember";
+    const adaptiveStorage = {
+      getItem: (k) => localStorage.getItem(k) ?? sessionStorage.getItem(k),
+      setItem: (k, v) => {
+        const persist = localStorage.getItem(REMEMBER_KEY) !== "0";
+        (persist ? sessionStorage : localStorage).removeItem(k);
+        (persist ? localStorage : sessionStorage).setItem(k, v);
+      },
+      removeItem: (k) => { localStorage.removeItem(k); sessionStorage.removeItem(k); },
+    };
+
+    (async () => {
+      const createClient = window.supabase && window.supabase.createClient;
+      const configured = !/[\[\]]/.test(SUPABASE_URL + SUPABASE_ANON_KEY);
+      if (!configured) return showNotice("Credential Supabase belum diisi. Buka home.html, lalu ganti SUPABASE_URL dan SUPABASE_ANON_KEY (samakan dengan app.js).");
+      if (!createClient) return showNotice("Library Supabase gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.");
+
+      const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { storage: adaptiveStorage, persistSession: true, autoRefreshToken: true },
+      });
+      const { data } = await sb.auth.getSession();
+      if (!data.session) return toLogin();
+
+      const u = data.session.user;
+      const name = (u.user_metadata && u.user_metadata.full_name) || "Pengguna";
+      $("#name").textContent = name;
+      $("#contact").textContent = u.email || (u.phone ? "+" + u.phone.replace(/^\+/, "") : "");
+      $("#avatar").textContent = name.charAt(0).toUpperCase();
+      $("#app").hidden = false;
+      sb.from("profiles").select("role").eq("id", u.id).maybeSingle()
+        .then(({ data: p }) => { if (p && p.role === "admin") $("#admin-link").hidden = false; });
+
+      $("#btn-logout").addEventListener("click", async () => {
+        await sb.auth.signOut();
+        location.replace(LOGIN_URL);
+      });
+    })();
+  </script>
+</body>
+</html>

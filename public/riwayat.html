@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NeoGroup — Riwayat</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="dash.css">
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body><header id="hdr"></header>
+<main id="app" hidden>
+  <h1>Riwayat Transaksi</h1>
+  <p class="muted" id="active"></p>
+  <div id="list" style="display:flex;flex-direction:column;gap:14px"></div>
+</main>
+<script src="shop.js"></script>
+<script>
+const {sb,q,rp,esc,badge,fmtDate,mmss,countdown,errMsg,toast}=Shop;
+let stops=[],cool=0,uid;
+(async()=>{
+  const ses=await Shop.requireSession();if(!ses)return;uid=ses.user.id;
+  Shop.header('home.html','Beranda');q('#app').hidden=false;load();
+})();
+async function load(){
+  stops.forEach(f=>f());stops=[];
+  await sb.rpc('expire_orders');
+  const [o,l]=await Promise.all([
+    sb.from('orders').select('*').eq('user_id',uid).order('created_at',{ascending:false}).limit(50),
+    sb.from('user_limits').select('*').maybeSingle()]);
+  const list=o.data||[];
+  cool=l.data&&l.data.cooldown_until?new Date(l.data.cooldown_until).getTime():0;
+  const act=list.filter(x=>x.status==='pending'||x.status==='proses').length;
+  q('#active').textContent='Pesanan berlangsung: '+act+'/2';
+  q('#list').innerHTML=list.length?list.map(x=>`
+   <div class="card" data-id="${x.id}">
+     <div class="row"><b>${esc(x.invoice_id)}</b>${badge(x.status)}</div>
+     <div>${esc(x.item_name)}</div>
+     <div class="row"><span class="mono">${rp(x.total)}</span><span class="muted">${fmtDate(x.created_at)}</span></div>
+     ${x.status==='gagal'&&x.fail_reason?`<div class="muted">${esc(x.fail_reason)}</div>`:''}
+     ${x.status==='pending'?`
+       <div class="muted">Batas bayar: <b class="pt mono" data-end="${new Date(x.pay_expires_at).getTime()}"></b></div>
+       <div class="actions">
+         <a class="btn pri" href="status.html?id=${x.id}">Bayar Sekarang</a>
+         <button class="btn dng cancel" data-id="${x.id}">Batalkan Sekarang</button>
+       </div>`:`<a class="btn" href="status.html?id=${x.id}">Lihat Status</a>`}
+   </div>`).join(''):'<p class="muted">Belum ada transaksi.</p>';
+  document.querySelectorAll('.pt').forEach(el=>stops.push(countdown(el,+el.dataset.end,load)));
+  cooldownUI();
+}
+function cooldownUI(){
+  const btns=document.querySelectorAll('.cancel');if(!btns.length)return;
+  const s=Math.ceil((cool-Date.now())/1000);
+  btns.forEach(b=>{b.disabled=s>0;b.textContent=s>0?'Cooldown '+mmss(s):'Batalkan Sekarang'});
+  if(s>0)setTimeout(cooldownUI,1000);
+}
+q('#list').addEventListener('click',async e=>{
+  const b=e.target.closest('.cancel');if(!b||b.disabled)return;
+  if(!confirm('Batalkan pesanan ini? Pembatalan maksimal 2 kali, setelah itu cooldown 3 menit.'))return;
+  b.disabled=true;
+  const {error}=await sb.rpc('cancel_order',{p_id:b.dataset.id});
+  if(error){const m=errMsg(error);toast(m.startsWith('COOLDOWN')?'Cooldown pembatalan, coba lagi dalam '+mmss(+m.split(':')[1]):'Gagal membatalkan: '+m)}
+  else toast('Pesanan dibatalkan');
+  load();
+});
+</script></body></html>

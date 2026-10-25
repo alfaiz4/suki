@@ -1,0 +1,71 @@
+/* reset ringan + tata letak (pengganti utilitas Tailwind) */
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;min-height:100vh}
+h1,p{margin:0}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer}
+.top{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;max-width:56rem;margin:0 auto}
+.stage{display:flex;justify-content:center;padding:32px 20px 64px}
+.col{width:100%;max-width:24rem}
+
+:root{
+  --bg:#f5f6f7;--surface:#ffffff;--text:#14161a;--muted:#6b7078;--line:#e2e4e8;
+  --btn:#14161a;--btn-text:#f5f6f7;--tile:#eceef1;--danger:#b42318;--ok:#0f7a3d;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1013;--surface:#16191d;--text:#eef0f3;--muted:#8b919a;--line:#262a30;
+    --btn:#eef0f3;--btn-text:#0e1013;--tile:#1c2026;--danger:#ff8a80;--ok:#6ee7a0;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1013;--surface:#16191d;--text:#eef0f3;--muted:#8b919a;--line:#262a30;
+  --btn:#eef0f3;--btn-text:#0e1013;--tile:#1c2026;--danger:#ff8a80;--ok:#6ee7a0;
+}
+
+body{background:var(--bg);color:var(--text);font-family:'Outfit',system-ui,-apple-system,'Segoe UI',sans-serif;line-height:1.5;transition:background .3s,color .3s}
+:focus-visible{outline:2px solid var(--text);outline-offset:3px}
+a{text-decoration:underline;text-underline-offset:3px}
+.brand{font-weight:600;font-size:22px;letter-spacing:-.02em}
+
+/* saklar tema bulat */
+.switch{position:relative;width:62px;height:34px;border-radius:999px;border:1px solid var(--line);background:var(--tile);padding:0;cursor:pointer;transition:background .3s,border-color .3s}
+.switch .knob{position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:var(--btn);color:var(--btn-text);display:grid;place-items:center;transition:transform .35s cubic-bezier(.5,1.4,.5,1)}
+.switch[aria-checked="true"] .knob{transform:translateX(28px)}
+.switch svg{width:15px;height:15px;grid-area:1/1;transition:opacity .2s,transform .35s}
+.switch .moon{opacity:0;transform:rotate(-60deg) scale(.6)}
+.switch[aria-checked="true"] .sun{opacity:0;transform:rotate(60deg) scale(.6)}
+.switch[aria-checked="true"] .moon{opacity:1;transform:none}
+
+.title{font-size:34px;line-height:1.1;letter-spacing:-.03em;font-weight:500;margin:0 0 8px}
+.sub{color:var(--muted);font-weight:300;margin:0 0 24px;overflow-wrap:anywhere}
+.sub b{color:var(--text);font-weight:500}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:16px;transition:background .3s,border-color .3s}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:14px;color:var(--muted)}
+.input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font:inherit;transition:border-color .2s,background .3s}
+.input:focus{outline:none;border-color:var(--text)}
+.check{display:flex;align-items:center;gap:8px;font-size:15px;cursor:pointer}
+.check input{width:16px;height:16px;accent-color:var(--btn)}
+
+.btn{width:100%;border:0;border-radius:999px;background:var(--btn);color:var(--btn-text);padding:13px;font:inherit;font-weight:500;cursor:pointer;transition:opacity .2s}
+.btn:hover{opacity:.88}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-ghost{background:none;color:var(--text);border:1px solid var(--line)}
+.btn-ghost:hover{border-color:var(--text);opacity:1}
+.alt{text-align:center;color:var(--muted);font-size:15px;margin-top:20px}
+.alt a{color:var(--text)}
+
+.msg{min-height:1.25rem;margin:0;font-size:14px;color:var(--danger)}
+.msg.ok{color:var(--ok)}
+.notice{border:1px solid var(--danger);color:var(--danger);border-radius:12px;padding:12px 14px;font-size:14px;margin-bottom:20px}
+
+.otp{display:flex;gap:8px;justify-content:center}
+.otp-box{flex:1;min-width:0;max-width:52px;height:56px;text-align:center;font:inherit;font-size:22px;font-weight:500;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text)}
+.otp-box:focus{outline:none;border-color:var(--text)}
+
+.dash{align-items:flex-start}
+.dash .btn{margin-top:8px}
+.avatar{width:56px;height:56px;border-radius:50%;background:var(--btn);color:var(--btn-text);display:grid;place-items:center;font-size:22px;font-weight:500;margin-bottom:4px}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}

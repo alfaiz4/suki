@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NeoGroup — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="dash.css">
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body><header id="hdr"></header>
+<main id="app" hidden>
+  <h1>Dashboard Admin</h1>
+  <div class="tabs"><button class="btn pri" id="t-o">Pesanan</button><button class="btn" id="t-p">Barang</button></div>
+  <section id="s-o" style="display:flex;flex-direction:column;gap:14px">
+    <select id="flt"><option value="">Semua status</option><option value="pending">Pending</option><option value="proses">Proses</option><option value="success">Success</option><option value="gagal">Gagal</option></select>
+    <div id="orders" style="display:flex;flex-direction:column;gap:14px"></div>
+  </section>
+  <section id="s-p" hidden style="display:flex;flex-direction:column;gap:14px">
+    <div class="card"><b>Tambah Barang Baru</b>
+      <input id="p-id" placeholder="ID Barang (mis. 9 / NF-01)"><input id="p-name" placeholder="Nama Barang">
+      <input id="p-price" type="number" min="1" inputmode="numeric" placeholder="Harga (Rp)">
+      <input id="p-desc" placeholder="Deskripsi (opsional)"><input id="p-img" placeholder="URL gambar (opsional)">
+      <button class="btn pri" id="p-add">Tambah Barang</button></div>
+    <div id="products" style="display:flex;flex-direction:column;gap:10px"></div>
+  </section>
+</main>
+<script src="shop.js"></script>
+<script>
+const {sb,q,rp,esc,badge,fmtDate,toast,errMsg}=Shop;
+const SEL=s=>['pending','proses','success','gagal'].map(v=>`<option value="${v}"${v===s?' selected':''}>${Shop.LABEL[v]}</option>`).join('');
+(async()=>{
+  const ses=await Shop.requireSession();if(!ses)return;
+  if(!(await Shop.isAdmin(ses.user.id)))return location.replace('home.html');
+  Shop.header('home.html','Beranda');q('#app').hidden=false;orders();products();
+})();
+function tab(p){q('#s-o').hidden=p;q('#s-p').hidden=!p;q('#t-o').classList.toggle('pri',!p);q('#t-p').classList.toggle('pri',p)}
+q('#t-o').onclick=()=>tab(false);q('#t-p').onclick=()=>tab(true);q('#flt').onchange=orders;
+async function orders(){
+  await sb.rpc('expire_orders');
+  let r=sb.from('orders').select('*').order('created_at',{ascending:false}).limit(100);
+  if(q('#flt').value)r=r.eq('status',q('#flt').value);
+  const {data,error}=await r;if(error)return toast(error.message);
+  q('#orders').innerHTML=(data||[]).map(o=>`<div class="card">
+    <div class="row"><b>${esc(o.invoice_id)}</b>${badge(o.status)}</div>
+    <div>${esc(o.item_name)}</div>
+    <div class="row"><span class="mono">${rp(o.total)}</span><span class="muted">${esc(o.buyer||'-')} · ${fmtDate(o.created_at)}</span></div>
+    <div class="actions"><select data-s="${o.id}">${SEL(o.status)}</select><button class="btn pri save" data-id="${o.id}">Simpan</button></div></div>`).join('')||'<p class="muted">Belum ada pesanan.</p>';
+}
+q('#orders').addEventListener('click',async e=>{
+  const b=e.target.closest('.save');if(!b)return;
+  const {error}=await sb.rpc('admin_set_status',{p_id:b.dataset.id,p_status:document.querySelector(`[data-s="${b.dataset.id}"]`).value});
+  toast(error?errMsg(error):'Status diperbarui');orders();
+});
+async function products(){
+  const {data}=await sb.from('products').select('*').order('created_at',{ascending:false});
+  q('#products').innerHTML=(data||[]).map(p=>`<div class="card"><div class="row"><b>${esc(p.name)}</b><span class="mono">${rp(p.price)}</span></div><span class="muted">ID: ${esc(p.id)} · ${esc(p.descr)}</span></div>`).join('');
+}
+q('#p-add').onclick=async()=>{
+  const v=k=>q('#p-'+k).value.trim(),price=parseInt(v('price'),10);
+  if(!v('id')||!v('name')||!(price>0))return toast('ID, Nama, dan Harga wajib diisi');
+  const {error}=await sb.rpc('admin_add_product',{p_id:v('id'),p_name:v('name'),p_price:price,p_descr:v('desc'),p_img:v('img')});
+  if(error)return toast(error.code==='23505'?'ID Barang sudah dipakai':errMsg(error));
+  ['id','name','price','desc','img'].forEach(k=>q('#p-'+k).value='');toast('Barang ditambahkan');products();
+};
+</script></body></html>
