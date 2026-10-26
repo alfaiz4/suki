@@ -77,8 +77,13 @@ async function cancelAtGateway(o) {
   return "error";
 }
 
+process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e));
+process.on("uncaughtException", (e) => console.error("uncaughtException:", e));
+
 const app = express();
 app.disable("x-powered-by");
+app.use((req, _res, next) => { if (req.path.startsWith("/api")) console.log("→", req.method, req.path); next(); });
+app.get("/api/ping", (_req, res) => res.json({ ok: true, t: Date.now() }));
 app.use(express.json({ limit: "10kb" }));
 
 // Hanya nilai publik yang dikirim ke browser
@@ -162,6 +167,9 @@ app.post("/api/fr3", async (req, res) => {
 setInterval(async () => {
   try {
     await db.rpc("expire_orders");
+    // pengganti callback: cek pesanan pending ke gateway walau pembeli sudah menutup halaman
+    const { data: pend } = await db.from("orders").select("*").eq("status", "pending").not("pay_data", "is", null).limit(20);
+    for (const o of pend || []) if (!o.pay_data?.creating) await markIfPaid(o);
     const { data } = await db.from("orders").select("*").eq("status", "gagal").eq("gw_cancelled", false)
       .not("pay_data", "is", null).limit(20);
     for (const o of data || []) {
@@ -174,4 +182,5 @@ setInterval(async () => {
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "public");
 app.use(express.static(dir, { extensions: ["html"] }));
 app.get("/", (_req, res) => res.redirect("/index.html"));
-app.listen(process.env.PORT || 3000, () => console.log("Server berjalan"));
+app.use((err, _req, res, _next) => { console.error("express error:", err); res.status(500).json({ error: "Kesalahan server" }); });
+app.listen(process.env.PORT || 3000, "0.0.0.0", () => console.log("Server berjalan di port", process.env.PORT || 3000));
