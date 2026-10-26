@@ -56,9 +56,8 @@ q('#list').addEventListener('click',async e=>{
   const b=e.target.closest('.cancel');if(!b||b.disabled)return;
   if(!confirm('Batalkan pesanan ini? Pembatalan maksimal 2 kali, setelah itu cooldown 3 menit.'))return;
   b.disabled=true;
-  const {error}=await sb.rpc('cancel_order',{p_id:b.dataset.id});
-  if(error){const m=errMsg(error);toast(m.startsWith('COOLDOWN')?'Cooldown pembatalan, coba lagi dalam '+mmss(+m.split(':')[1]):'Gagal membatalkan: '+m)}
-  else toast('Pesanan dibatalkan');
+  try{await Shop.fn('cancel',{order_id:b.dataset.id});toast('Pesanan dibatalkan')}
+  catch(e){const m=errMsg(e);toast(m.startsWith('COOLDOWN')?'Cooldown pembatalan, coba lagi dalam '+mmss(+m.split(':')[1]):m)}
   load();
 });
 </script></body></html>

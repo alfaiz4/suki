@@ -29,9 +29,17 @@ async function tick(){
   render();
 }
 function qrOf(d){
-  const img=d.qris_url||d.qr_url||d.qris_image||d.qr_image||d.image||d.qrcode||d.qr;
-  if(img)return{img:/^(https?:|data:)/.test(img)?img:'data:image/png;base64,'+img};
-  const s=d.qris||d.qr_string||d.qris_string||d.qr_content;return s?{str:s}:null;
+  // cari QR di mana pun posisinya dalam respons gateway
+  let img=null,str=null;
+  (function walk(v,k){
+    if(img||str)return;
+    if(v&&typeof v==='object'){for(const x in v)walk(v[x],x);return}
+    if(typeof v!=='string')return;
+    if(/^000201/.test(v))str=v;
+    else if(/^data:image\//.test(v)||(/^https?:\/\//.test(v)&&/qr|\.(png|jpe?g|svg|webp)/i.test(v+k)))img=v;
+    else if(/qr|image|gambar/i.test(k)&&v.length>200&&/^[A-Za-z0-9+/=]+$/.test(v))img='data:image/png;base64,'+v;
+  })(d,'');
+  return img?{img}:str?{str}:null;
 }
 function waLink(o){
   const t=`Halo Admin, saya ingin menanyakan pesanan.\n\nInvoice ID: ${o.invoice_id}\nNama Barang: ${o.item_name}\nHarga: ${rp(o.total)}`;
@@ -40,7 +48,8 @@ function waLink(o){
 function render(){
   const o=order,k=o.status+(o.pay_data?1:0)+o.process_deadline;
   if(k===key)return;key=k;stops.forEach(f=>f());stops=[];
-  const qr=o.status==='pending'&&o.pay_data?qrOf(o.pay_data):null;
+  const pd=o.pay_data||{};
+  const qr=o.status==='pending'&&o.pay_data&&!pd.link_payment?qrOf(o.pay_data):null;
   q('#app').innerHTML=`
   <h1>Status Pesanan</h1>
   <div class="card">
@@ -49,9 +58,15 @@ function render(){
   </div>
   ${o.status==='pending'?`<div class="card">
     <div class="muted">Selesaikan pembayaran QRIS dalam</div><div class="timer" id="pay-t"></div>
-    ${qr?`<div class="qr" id="qr">${qr.img?`<img src="${esc(qr.img)}" alt="QRIS">`:''}</div>`
-        :'<p class="muted">QRIS sedang dibuat… <button class="btn" id="retry">Muat ulang</button></p>'}
-    <p class="muted">Status akan terbarui otomatis setelah pembayaran diterima.</p>
+    ${pd.link_payment&&/^https:\/\//.test(pd.link_payment)?`
+      <div class="row"><span class="muted">Harga</span><span class="mono">${rp(o.total)}</span></div>
+      ${pd.fee?`<div class="row"><span class="muted">Biaya layanan</span><span class="mono">${rp(pd.fee)}</span></div>`:''}
+      <div class="row"><b>Total bayar</b><b class="mono">${rp(pd.jumlah_transfer||o.total)}</b></div>
+      <a class="btn pri" href="${esc(pd.link_payment)}" target="_blank" rel="noopener">Bayar dengan QRIS</a>`
+    :qr?`<div class="qr" id="qr">${qr.img?`<img src="${esc(qr.img)}" alt="QRIS">`:''}</div>`
+    :'<p class="muted">QRIS sedang dibuat… tekan Muat ulang.</p>'}
+    <p class="muted">Setelah membayar, tekan Muat ulang untuk mengecek status. Status juga diperbarui otomatis.</p>
+    <button class="btn" id="refresh">Muat ulang</button>
     <button class="btn dng" id="cancel">Batalkan Sekarang</button></div>`:''}
   <div class="card">
     <b>Status Pesanan</b>
@@ -65,12 +80,20 @@ function render(){
   if(o.status==='pending'){
     stops.push(countdown(q('#pay-t'),new Date(o.pay_expires_at).getTime(),async()=>{await sb.rpc('expire_orders');tick()}));
     if(qr&&qr.str)new QRCode(q('#qr'),{text:qr.str,width:216,height:216});
-    const r=q('#retry');if(r)r.onclick=async()=>{try{order=(await Shop.fn('create',{order_id:id})).order;key='';render()}catch(e){toast(e.message)}};
+    q('#refresh').onclick=async()=>{
+      const b=q('#refresh');b.disabled=true;b.textContent='Memeriksa…';
+      try{
+        const r=await Shop.fn(o.pay_data&&!o.pay_data.creating?'status':'create',{order_id:id});
+        order=r.order;key='';render();
+        if(order.status==='pending')toast('Pembayaran belum diterima');
+        else if(order.status==='proses')toast('Pembayaran diterima!');
+      }catch(e){toast(e.message);b.disabled=false;b.textContent='Muat ulang'}
+    };
     q('#cancel').onclick=async()=>{
       if(!confirm('Batalkan pesanan ini?'))return;
-      const {error}=await sb.rpc('cancel_order',{p_id:id});
-      if(error){const m=errMsg(error);toast(m.startsWith('COOLDOWN')?'Cooldown, coba lagi dalam '+Shop.mmss(+m.split(':')[1]):m)}
-      else{order=await fetchOrder();key='';render()}
+      q('#cancel').disabled=true;
+      try{await Shop.fn('cancel',{order_id:id});order=await fetchOrder();key='';render();toast('Pesanan dibatalkan')}
+      catch(e){const m=errMsg(e);toast(m.startsWith('COOLDOWN')?'Cooldown, coba lagi dalam '+Shop.mmss(+m.split(':')[1]):m);q('#cancel').disabled=false}
     };
   }else if(o.process_deadline&&o.status==='proses'){
     stops.push(countdown(q('#proc-t'),new Date(o.process_deadline).getTime(),()=>{q('#proc-n').textContent='Estimasi waktu habis. Silakan hubungi admin.'}));
