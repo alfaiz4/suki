@@ -25,16 +25,30 @@ const isPaidText = (v) => {
   return !/unpaid|not|fail|gagal|expire|pending|created|belum/.test(t) && PAID.some((w) => t.includes(w));
 };
 
+const UA = process.env.ARIE_UA || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 async function arie(params) {
   const r = await fetch(ARIE_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": UA,
+      "Accept": "application/json, text/plain, */*",
+      "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
+      "Origin": new URL(ARIE_URL).origin,
+      "Referer": new URL(ARIE_URL).origin + "/",
+    },
     body: new URLSearchParams({ api_key: ARIE_API_KEY, ...params }),
     signal: AbortSignal.timeout(15000),
   });
   const text = await r.text();
   let j = {}; try { j = JSON.parse(text); } catch {}
-  console.log("Arie", params.action, r.status, text.slice(0, 600));
+  console.log("Arie", params.action, r.status, text.slice(0, 300).replace(/\s+/g, " "));
+  if (!j || !Object.keys(j).length) {
+    if (/cloudflare/i.test(text)) {
+      const code = (text.match(/Error code[^0-9]{0,20}(\d{4})/i) || text.match(/Error (\d{4})/i) || [])[1];
+      j = { status: false, data: { pesan: "Diblokir Cloudflare milik Ariepulsa" + (code ? " (kode " + code + ")" : "") + " — IP server belum diizinkan" } };
+    }
+  }
   return { http: r.status, j };
 }
 
@@ -128,12 +142,12 @@ app.post("/api/fr3", async (req, res) => {
       } catch (e) {
         console.error("Arie error:", e);
         await db.from("orders").update({ pay_data: null }).eq("id", o.id);
-        return res.status(502).json({ error: "Tidak bisa menghubungi payment gateway" });
+        return res.status(424).json({ error: "Tidak bisa menghubungi payment gateway" });
       }
       const { http, j } = out;
       if (!truthy(j?.status) || !(j?.data ?? null)) {
         await db.from("orders").update({ pay_data: null }).eq("id", o.id);
-        return res.status(502).json({ error: (msgOf(j) || "Gagal membuat QRIS") + " (HTTP " + http + ")" });
+        return res.status(424).json({ error: (msgOf(j) || "Gagal membuat QRIS") + " (HTTP " + http + ")" });
       }
       await db.from("orders").update({ pay_data: j.data, trx_id: o.invoice_id }).eq("id", o.id);
       return res.json({ order: await get() });
@@ -184,3 +198,8 @@ app.use(express.static(dir, { extensions: ["html"] }));
 app.get("/", (_req, res) => res.redirect("/index.html"));
 app.use((err, _req, res, _next) => { console.error("express error:", err); res.status(500).json({ error: "Kesalahan server" }); });
 app.listen(process.env.PORT || 3000, "0.0.0.0", () => console.log("Server berjalan di port", process.env.PORT || 3000));
+
+// Catat IP keluar server di log (untuk didaftarkan/whitelist di Ariepulsa bila diminta)
+fetch("https://api.ipify.org?format=json", { signal: AbortSignal.timeout(8000) })
+  .then((r) => r.json()).then((j) => console.log("IP keluar server:", j.ip))
+  .catch((e) => console.log("Gagal cek IP keluar:", e.message));
