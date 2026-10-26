@@ -31,7 +31,7 @@ async function fn(action,body){
   const {data:s}=await sb.auth.getSession();
   const r=await fetch("/api/fr3",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(s.session?s.session.access_token:"")},body:JSON.stringify({action,...body})});
   const j=await r.json().catch(()=>({}));
-  if(!r.ok||j.error)throw new Error(j.error||"Permintaan gagal");return j;
+  if(!r.ok||j.error)throw new Error(j.error||("Permintaan gagal (HTTP "+r.status+")"));return j;
 }
 function toast(m){let t=q("#toast");if(!t){t=document.createElement("div");t.id="toast";t.className="toast";document.body.appendChild(t)}
   t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),2800)}
